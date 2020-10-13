@@ -1,0 +1,1298 @@
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 1
+
+
+   1              		.syntax unified
+   2              		.cpu cortex-m0
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 0
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.syntax unified
+  15              		.file	"accelerometer.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.accelerometerWriteRegister,"ax",%progbits
+  20              		.align	2
+  21              		.code	16
+  22              		.thumb_func
+  23              		.type	accelerometerWriteRegister, %function
+  24              	accelerometerWriteRegister:
+  25              	.LFB38:
+  26              		.file 1 "accelerometer.c"
+   1:accelerometer.c **** /* ========================================
+   2:accelerometer.c ****  *
+   3:accelerometer.c ****  * Copyright YOUR COMPANY, THE YEAR
+   4:accelerometer.c ****  * All Rights Reserved
+   5:accelerometer.c ****  * UNPUBLISHED, LICENSED SOFTWARE.
+   6:accelerometer.c ****  *
+   7:accelerometer.c ****  * CONFIDENTIAL AND PROPRIETARY INFORMATION
+   8:accelerometer.c ****  * WHICH IS THE PROPERTY OF your company.
+   9:accelerometer.c ****  *
+  10:accelerometer.c ****  * ========================================
+  11:accelerometer.c **** */
+  12:accelerometer.c **** ///////////////////////////////////////////////////////////////////////////////
+  13:accelerometer.c **** //  Includes
+  14:accelerometer.c **** ///////////////////////////////////////////////////////////////////////////////
+  15:accelerometer.c **** #include "accelerometer.h" // Interface for this file
+  16:accelerometer.c **** 
+  17:accelerometer.c **** // Standard Libraries
+  18:accelerometer.c **** #include <stdbool.h>
+  19:accelerometer.c **** #include <stdint.h>
+  20:accelerometer.c **** #include <stdio.h>
+  21:accelerometer.c **** #include <math.h>
+  22:accelerometer.c **** 
+  23:accelerometer.c **** #include <project.h>
+  24:accelerometer.c **** 
+  25:accelerometer.c **** #define ACCEL_ADDR 0x18
+  26:accelerometer.c **** 
+  27:accelerometer.c **** static bool accelerometerWriteRegister(uint8_t reg, uint8_t value);
+  28:accelerometer.c **** static uint8_t accelerometerReadRegister(uint8_t reg);
+  29:accelerometer.c **** 
+  30:accelerometer.c **** void accelerometerInit(void){
+  31:accelerometer.c ****     accelerometerWriteRegister(0x20, 0b01111111); //write CTRL_REG1
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 2
+
+
+  32:accelerometer.c ****     accelerometerWriteRegister(0x21, 0b00000100); //write CTRL_REG2
+  33:accelerometer.c ****     accelerometerWriteRegister(0x22, 0b10000000); //write CTRL_REG3
+  34:accelerometer.c ****     accelerometerWriteRegister(0x23, 0b00010000); //write CTRL_REG4
+  35:accelerometer.c ****     accelerometerWriteRegister(0x24, 0b00000000); //write CTRL_REG5
+  36:accelerometer.c ****     accelerometerWriteRegister(0x25, 0b00000000); //write CTRL_REG6
+  37:accelerometer.c ****     accelerometerWriteRegister(0x26, 0b00000000); //write REFERENCE
+  38:accelerometer.c ****     //single click configuration
+  39:accelerometer.c ****     //accelerometerWriteRegister(0x38, 0b00010101); //write CLICK_CFG
+  40:accelerometer.c ****     //double click configuration
+  41:accelerometer.c ****     accelerometerWriteRegister(0x38, 0b00101010); //write CLICK_CFG
+  42:accelerometer.c ****     
+  43:accelerometer.c ****     // play with this value!
+  44:accelerometer.c ****     accelerometerWriteRegister(0x3A, 0b00100000); //write CLICK_THS
+  45:accelerometer.c ****     //time limit of 0x33 is sensitive and seemingly most reliable
+  46:accelerometer.c ****     accelerometerWriteRegister(0x3B, 0x33); //write TIME_LIMIT
+  47:accelerometer.c ****     
+  48:accelerometer.c ****     //latency of 0x15 seems to be really good for double clicking
+  49:accelerometer.c ****     accelerometerWriteRegister(0x3C, 0x15); //write TIME_LATENCY
+  50:accelerometer.c ****     
+  51:accelerometer.c ****     //window of 42 seems to be good for double clicking, 0xff works well too
+  52:accelerometer.c ****     accelerometerWriteRegister(0x3D, 0x42); //write TIME_WINDOW
+  53:accelerometer.c **** }
+  54:accelerometer.c **** 
+  55:accelerometer.c **** 
+  56:accelerometer.c **** static uint8_t accelerometerReadRegister(uint8_t reg){
+  57:accelerometer.c ****     uint8_t wrbuf[1];
+  58:accelerometer.c ****     uint8_t rdbuf[1];
+  59:accelerometer.c ****     wrbuf[0] = reg;
+  60:accelerometer.c ****     I2C_Start();
+  61:accelerometer.c ****     I2C_I2CMasterClearStatus();
+  62:accelerometer.c ****     
+  63:accelerometer.c ****     I2C_I2CMasterWriteBuf(ACCEL_ADDR, (uint8_t *)wrbuf, sizeof(wrbuf), I2C_I2C_MODE_NO_STOP);
+  64:accelerometer.c ****     while(0u == (I2C_I2CMasterStatus() & I2C_I2C_MSTAT_WR_CMPLT)){}
+  65:accelerometer.c ****     
+  66:accelerometer.c ****     I2C_I2CMasterReadBuf(ACCEL_ADDR, (uint8_t *)rdbuf, sizeof(rdbuf), I2C_I2C_MODE_REPEAT_START);
+  67:accelerometer.c ****     while(0u == (I2C_I2CMasterStatus() & I2C_I2C_MSTAT_RD_CMPLT)){}
+  68:accelerometer.c ****     I2C_Stop();
+  69:accelerometer.c ****     return rdbuf[0];
+  70:accelerometer.c **** }
+  71:accelerometer.c **** 
+  72:accelerometer.c **** static bool accelerometerWriteRegister(uint8_t reg, uint8_t value){
+  27              		.loc 1 72 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 8
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31              	.LVL0:
+  32 0000 10B5     		push	{r4, lr}
+  33              		.cfi_def_cfa_offset 8
+  34              		.cfi_offset 4, -8
+  35              		.cfi_offset 14, -4
+  36 0002 82B0     		sub	sp, sp, #8
+  37              		.cfi_def_cfa_offset 16
+  38              	.LVL1:
+  73:accelerometer.c ****     bool success = false;
+  74:accelerometer.c ****     uint8 wrbuf[2];
+  75:accelerometer.c ****     wrbuf[0] = reg;
+  39              		.loc 1 75 0
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 3
+
+
+  40 0004 01AC     		add	r4, sp, #4
+  41 0006 2070     		strb	r0, [r4]
+  76:accelerometer.c ****     wrbuf[1] = value;
+  42              		.loc 1 76 0
+  43 0008 6170     		strb	r1, [r4, #1]
+  77:accelerometer.c ****     
+  78:accelerometer.c ****     I2C_Start();
+  44              		.loc 1 78 0
+  45 000a FFF7FEFF 		bl	I2C_Start
+  46              	.LVL2:
+  79:accelerometer.c ****     
+  80:accelerometer.c ****     I2C_I2CMasterClearStatus();
+  47              		.loc 1 80 0
+  48 000e FFF7FEFF 		bl	I2C_I2CMasterClearStatus
+  49              	.LVL3:
+  81:accelerometer.c ****     I2C_I2CMasterWriteBuf(ACCEL_ADDR, wrbuf, sizeof(wrbuf), I2C_I2C_MODE_COMPLETE_XFER);
+  50              		.loc 1 81 0
+  51 0012 0023     		movs	r3, #0
+  52 0014 0222     		movs	r2, #2
+  53 0016 2100     		movs	r1, r4
+  54 0018 1820     		movs	r0, #24
+  55 001a FFF7FEFF 		bl	I2C_I2CMasterWriteBuf
+  56              	.LVL4:
+  57              	.L2:
+  82:accelerometer.c ****     
+  83:accelerometer.c ****     while(0u == (I2C_I2CMasterStatus() & I2C_I2C_MSTAT_WR_CMPLT)){}
+  58              		.loc 1 83 0 discriminator 1
+  59 001e FFF7FEFF 		bl	I2C_I2CMasterStatus
+  60              	.LVL5:
+  61 0022 8307     		lsls	r3, r0, #30
+  62 0024 FBD5     		bpl	.L2
+  84:accelerometer.c ****     
+  85:accelerometer.c ****     if(0u == (I2C_I2C_MSTAT_ERR_XFER & I2C_I2CMasterStatus())){
+  63              		.loc 1 85 0
+  64 0026 FFF7FEFF 		bl	I2C_I2CMasterStatus
+  65              	.LVL6:
+  66 002a 8305     		lsls	r3, r0, #22
+  67 002c 05D4     		bmi	.L4
+  86:accelerometer.c ****         if(I2C_I2CMasterGetWriteBufSize() == sizeof(wrbuf)){
+  68              		.loc 1 86 0
+  69 002e FFF7FEFF 		bl	I2C_I2CMasterGetWriteBufSize
+  70              	.LVL7:
+  71 0032 0228     		cmp	r0, #2
+  72 0034 03D0     		beq	.L5
+  73:accelerometer.c ****     uint8 wrbuf[2];
+  73              		.loc 1 73 0
+  74 0036 0024     		movs	r4, #0
+  75 0038 02E0     		b	.L3
+  76              	.L4:
+  87:accelerometer.c ****             success = true;
+  88:accelerometer.c ****         }
+  89:accelerometer.c ****     } else {
+  90:accelerometer.c ****         success = false;
+  77              		.loc 1 90 0
+  78 003a 0024     		movs	r4, #0
+  79 003c 00E0     		b	.L3
+  80              	.L5:
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 4
+
+
+  87:accelerometer.c ****             success = true;
+  81              		.loc 1 87 0
+  82 003e 0124     		movs	r4, #1
+  83              	.L3:
+  84              	.LVL8:
+  91:accelerometer.c ****     }
+  92:accelerometer.c ****     
+  93:accelerometer.c ****     I2C_I2CMasterClearStatus();
+  85              		.loc 1 93 0
+  86 0040 FFF7FEFF 		bl	I2C_I2CMasterClearStatus
+  87              	.LVL9:
+  94:accelerometer.c ****     I2C_Stop();
+  88              		.loc 1 94 0
+  89 0044 FFF7FEFF 		bl	I2C_Stop
+  90              	.LVL10:
+  95:accelerometer.c ****     return success;
+  96:accelerometer.c **** }
+  91              		.loc 1 96 0
+  92 0048 2000     		movs	r0, r4
+  93 004a 02B0     		add	sp, sp, #8
+  94              		@ sp needed
+  95              	.LVL11:
+  96 004c 10BD     		pop	{r4, pc}
+  97              		.cfi_endproc
+  98              	.LFE38:
+  99              		.size	accelerometerWriteRegister, .-accelerometerWriteRegister
+ 100 004e C046     		.section	.text.accelerometerInit,"ax",%progbits
+ 101              		.align	2
+ 102              		.global	accelerometerInit
+ 103              		.code	16
+ 104              		.thumb_func
+ 105              		.type	accelerometerInit, %function
+ 106              	accelerometerInit:
+ 107              	.LFB36:
+  30:accelerometer.c ****     accelerometerWriteRegister(0x20, 0b01111111); //write CTRL_REG1
+ 108              		.loc 1 30 0
+ 109              		.cfi_startproc
+ 110              		@ args = 0, pretend = 0, frame = 0
+ 111              		@ frame_needed = 0, uses_anonymous_args = 0
+ 112 0000 10B5     		push	{r4, lr}
+ 113              		.cfi_def_cfa_offset 8
+ 114              		.cfi_offset 4, -8
+ 115              		.cfi_offset 14, -4
+  31:accelerometer.c ****     accelerometerWriteRegister(0x21, 0b00000100); //write CTRL_REG2
+ 116              		.loc 1 31 0
+ 117 0002 7F21     		movs	r1, #127
+ 118 0004 2020     		movs	r0, #32
+ 119 0006 FFF7FEFF 		bl	accelerometerWriteRegister
+ 120              	.LVL12:
+  32:accelerometer.c ****     accelerometerWriteRegister(0x22, 0b10000000); //write CTRL_REG3
+ 121              		.loc 1 32 0
+ 122 000a 0421     		movs	r1, #4
+ 123 000c 2120     		movs	r0, #33
+ 124 000e FFF7FEFF 		bl	accelerometerWriteRegister
+ 125              	.LVL13:
+  33:accelerometer.c ****     accelerometerWriteRegister(0x23, 0b00010000); //write CTRL_REG4
+ 126              		.loc 1 33 0
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 5
+
+
+ 127 0012 8021     		movs	r1, #128
+ 128 0014 2220     		movs	r0, #34
+ 129 0016 FFF7FEFF 		bl	accelerometerWriteRegister
+ 130              	.LVL14:
+  34:accelerometer.c ****     accelerometerWriteRegister(0x24, 0b00000000); //write CTRL_REG5
+ 131              		.loc 1 34 0
+ 132 001a 1021     		movs	r1, #16
+ 133 001c 2320     		movs	r0, #35
+ 134 001e FFF7FEFF 		bl	accelerometerWriteRegister
+ 135              	.LVL15:
+  35:accelerometer.c ****     accelerometerWriteRegister(0x25, 0b00000000); //write CTRL_REG6
+ 136              		.loc 1 35 0
+ 137 0022 0021     		movs	r1, #0
+ 138 0024 2420     		movs	r0, #36
+ 139 0026 FFF7FEFF 		bl	accelerometerWriteRegister
+ 140              	.LVL16:
+  36:accelerometer.c ****     accelerometerWriteRegister(0x26, 0b00000000); //write REFERENCE
+ 141              		.loc 1 36 0
+ 142 002a 0021     		movs	r1, #0
+ 143 002c 2520     		movs	r0, #37
+ 144 002e FFF7FEFF 		bl	accelerometerWriteRegister
+ 145              	.LVL17:
+  37:accelerometer.c ****     //single click configuration
+ 146              		.loc 1 37 0
+ 147 0032 0021     		movs	r1, #0
+ 148 0034 2620     		movs	r0, #38
+ 149 0036 FFF7FEFF 		bl	accelerometerWriteRegister
+ 150              	.LVL18:
+  41:accelerometer.c ****     
+ 151              		.loc 1 41 0
+ 152 003a 2A21     		movs	r1, #42
+ 153 003c 3820     		movs	r0, #56
+ 154 003e FFF7FEFF 		bl	accelerometerWriteRegister
+ 155              	.LVL19:
+  44:accelerometer.c ****     //time limit of 0x33 is sensitive and seemingly most reliable
+ 156              		.loc 1 44 0
+ 157 0042 2021     		movs	r1, #32
+ 158 0044 3A20     		movs	r0, #58
+ 159 0046 FFF7FEFF 		bl	accelerometerWriteRegister
+ 160              	.LVL20:
+  46:accelerometer.c ****     
+ 161              		.loc 1 46 0
+ 162 004a 3321     		movs	r1, #51
+ 163 004c 3B20     		movs	r0, #59
+ 164 004e FFF7FEFF 		bl	accelerometerWriteRegister
+ 165              	.LVL21:
+  49:accelerometer.c ****     
+ 166              		.loc 1 49 0
+ 167 0052 1521     		movs	r1, #21
+ 168 0054 3C20     		movs	r0, #60
+ 169 0056 FFF7FEFF 		bl	accelerometerWriteRegister
+ 170              	.LVL22:
+  52:accelerometer.c **** }
+ 171              		.loc 1 52 0
+ 172 005a 4221     		movs	r1, #66
+ 173 005c 3D20     		movs	r0, #61
+ 174 005e FFF7FEFF 		bl	accelerometerWriteRegister
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 6
+
+
+ 175              	.LVL23:
+  53:accelerometer.c **** 
+ 176              		.loc 1 53 0
+ 177              		@ sp needed
+ 178 0062 10BD     		pop	{r4, pc}
+ 179              		.cfi_endproc
+ 180              	.LFE36:
+ 181              		.size	accelerometerInit, .-accelerometerInit
+ 182              		.text
+ 183              	.Letext0:
+ 184              		.file 2 "c:\\program files (x86)\\cypress\\psoc creator\\4.2\\psoc creator\\import\\gnu\\arm\\5.4.
+ 185              		.file 3 "c:\\program files (x86)\\cypress\\psoc creator\\4.2\\psoc creator\\import\\gnu\\arm\\5.4.
+ 186              		.file 4 "Generated_Source\\PSoC4/cytypes.h"
+ 187              		.file 5 "Generated_Source\\PSoC4/I2C.h"
+ 188              		.file 6 "Generated_Source\\PSoC4/I2C_I2C.h"
+ 189              		.section	.debug_info,"",%progbits
+ 190              	.Ldebug_info0:
+ 191 0000 11030000 		.4byte	0x311
+ 192 0004 0400     		.2byte	0x4
+ 193 0006 00000000 		.4byte	.Ldebug_abbrev0
+ 194 000a 04       		.byte	0x4
+ 195 000b 01       		.uleb128 0x1
+ 196 000c 5A010000 		.4byte	.LASF28
+ 197 0010 0C       		.byte	0xc
+ 198 0011 1D010000 		.4byte	.LASF29
+ 199 0015 B7000000 		.4byte	.LASF30
+ 200 0019 00000000 		.4byte	.Ldebug_ranges0+0
+ 201 001d 00000000 		.4byte	0
+ 202 0021 00000000 		.4byte	.Ldebug_line0
+ 203 0025 02       		.uleb128 0x2
+ 204 0026 01       		.byte	0x1
+ 205 0027 06       		.byte	0x6
+ 206 0028 36020000 		.4byte	.LASF0
+ 207 002c 03       		.uleb128 0x3
+ 208 002d 0E000000 		.4byte	.LASF9
+ 209 0031 02       		.byte	0x2
+ 210 0032 1D       		.byte	0x1d
+ 211 0033 37000000 		.4byte	0x37
+ 212 0037 02       		.uleb128 0x2
+ 213 0038 01       		.byte	0x1
+ 214 0039 08       		.byte	0x8
+ 215 003a 6C000000 		.4byte	.LASF1
+ 216 003e 02       		.uleb128 0x2
+ 217 003f 02       		.byte	0x2
+ 218 0040 05       		.byte	0x5
+ 219 0041 FA010000 		.4byte	.LASF2
+ 220 0045 02       		.uleb128 0x2
+ 221 0046 02       		.byte	0x2
+ 222 0047 07       		.byte	0x7
+ 223 0048 1E000000 		.4byte	.LASF3
+ 224 004c 02       		.uleb128 0x2
+ 225 004d 04       		.byte	0x4
+ 226 004e 05       		.byte	0x5
+ 227 004f 04020000 		.4byte	.LASF4
+ 228 0053 02       		.uleb128 0x2
+ 229 0054 04       		.byte	0x4
+ 230 0055 07       		.byte	0x7
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 7
+
+
+ 231 0056 7A000000 		.4byte	.LASF5
+ 232 005a 02       		.uleb128 0x2
+ 233 005b 08       		.byte	0x8
+ 234 005c 05       		.byte	0x5
+ 235 005d 00000000 		.4byte	.LASF6
+ 236 0061 02       		.uleb128 0x2
+ 237 0062 08       		.byte	0x8
+ 238 0063 07       		.byte	0x7
+ 239 0064 55000000 		.4byte	.LASF7
+ 240 0068 04       		.uleb128 0x4
+ 241 0069 04       		.byte	0x4
+ 242 006a 05       		.byte	0x5
+ 243 006b 696E7400 		.ascii	"int\000"
+ 244 006f 02       		.uleb128 0x2
+ 245 0070 04       		.byte	0x4
+ 246 0071 07       		.byte	0x7
+ 247 0072 03010000 		.4byte	.LASF8
+ 248 0076 03       		.uleb128 0x3
+ 249 0077 15010000 		.4byte	.LASF10
+ 250 007b 03       		.byte	0x3
+ 251 007c 18       		.byte	0x18
+ 252 007d 2C000000 		.4byte	0x2c
+ 253 0081 02       		.uleb128 0x2
+ 254 0082 08       		.byte	0x8
+ 255 0083 04       		.byte	0x4
+ 256 0084 0D020000 		.4byte	.LASF11
+ 257 0088 02       		.uleb128 0x2
+ 258 0089 04       		.byte	0x4
+ 259 008a 07       		.byte	0x7
+ 260 008b E8010000 		.4byte	.LASF12
+ 261 008f 02       		.uleb128 0x2
+ 262 0090 01       		.byte	0x1
+ 263 0091 08       		.byte	0x8
+ 264 0092 10010000 		.4byte	.LASF13
+ 265 0096 02       		.uleb128 0x2
+ 266 0097 08       		.byte	0x8
+ 267 0098 04       		.byte	0x4
+ 268 0099 B0000000 		.4byte	.LASF14
+ 269 009d 02       		.uleb128 0x2
+ 270 009e 04       		.byte	0x4
+ 271 009f 04       		.byte	0x4
+ 272 00a0 4F000000 		.4byte	.LASF15
+ 273 00a4 05       		.uleb128 0x5
+ 274 00a5 A2000000 		.4byte	.LASF16
+ 275 00a9 04       		.byte	0x4
+ 276 00aa E401     		.2byte	0x1e4
+ 277 00ac 37000000 		.4byte	0x37
+ 278 00b0 05       		.uleb128 0x5
+ 279 00b1 FC000000 		.4byte	.LASF17
+ 280 00b5 04       		.byte	0x4
+ 281 00b6 E501     		.2byte	0x1e5
+ 282 00b8 45000000 		.4byte	0x45
+ 283 00bc 06       		.uleb128 0x6
+ 284 00bd 2D010000 		.4byte	.LASF31
+ 285 00c1 01       		.byte	0x1
+ 286 00c2 48       		.byte	0x48
+ 287 00c3 73010000 		.4byte	0x173
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 8
+
+
+ 288 00c7 00000000 		.4byte	.LFB38
+ 289 00cb 4E000000 		.4byte	.LFE38-.LFB38
+ 290 00cf 01       		.uleb128 0x1
+ 291 00d0 9C       		.byte	0x9c
+ 292 00d1 73010000 		.4byte	0x173
+ 293 00d5 07       		.uleb128 0x7
+ 294 00d6 72656700 		.ascii	"reg\000"
+ 295 00da 01       		.byte	0x1
+ 296 00db 48       		.byte	0x48
+ 297 00dc 76000000 		.4byte	0x76
+ 298 00e0 00000000 		.4byte	.LLST0
+ 299 00e4 08       		.uleb128 0x8
+ 300 00e5 18000000 		.4byte	.LASF18
+ 301 00e9 01       		.byte	0x1
+ 302 00ea 48       		.byte	0x48
+ 303 00eb 76000000 		.4byte	0x76
+ 304 00ef 21000000 		.4byte	.LLST1
+ 305 00f3 09       		.uleb128 0x9
+ 306 00f4 A8000000 		.4byte	.LASF19
+ 307 00f8 01       		.byte	0x1
+ 308 00f9 49       		.byte	0x49
+ 309 00fa 73010000 		.4byte	0x173
+ 310 00fe 42000000 		.4byte	.LLST2
+ 311 0102 0A       		.uleb128 0xa
+ 312 0103 F6000000 		.4byte	.LASF20
+ 313 0107 01       		.byte	0x1
+ 314 0108 4A       		.byte	0x4a
+ 315 0109 7A010000 		.4byte	0x17a
+ 316 010d 02       		.uleb128 0x2
+ 317 010e 91       		.byte	0x91
+ 318 010f 74       		.sleb128 -12
+ 319 0110 0B       		.uleb128 0xb
+ 320 0111 0E000000 		.4byte	.LVL2
+ 321 0115 CE020000 		.4byte	0x2ce
+ 322 0119 0B       		.uleb128 0xb
+ 323 011a 12000000 		.4byte	.LVL3
+ 324 011e D9020000 		.4byte	0x2d9
+ 325 0122 0C       		.uleb128 0xc
+ 326 0123 1E000000 		.4byte	.LVL4
+ 327 0127 E5020000 		.4byte	0x2e5
+ 328 012b 45010000 		.4byte	0x145
+ 329 012f 0D       		.uleb128 0xd
+ 330 0130 01       		.uleb128 0x1
+ 331 0131 50       		.byte	0x50
+ 332 0132 01       		.uleb128 0x1
+ 333 0133 48       		.byte	0x48
+ 334 0134 0D       		.uleb128 0xd
+ 335 0135 01       		.uleb128 0x1
+ 336 0136 51       		.byte	0x51
+ 337 0137 02       		.uleb128 0x2
+ 338 0138 74       		.byte	0x74
+ 339 0139 00       		.sleb128 0
+ 340 013a 0D       		.uleb128 0xd
+ 341 013b 01       		.uleb128 0x1
+ 342 013c 52       		.byte	0x52
+ 343 013d 01       		.uleb128 0x1
+ 344 013e 32       		.byte	0x32
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 9
+
+
+ 345 013f 0D       		.uleb128 0xd
+ 346 0140 01       		.uleb128 0x1
+ 347 0141 53       		.byte	0x53
+ 348 0142 01       		.uleb128 0x1
+ 349 0143 30       		.byte	0x30
+ 350 0144 00       		.byte	0
+ 351 0145 0B       		.uleb128 0xb
+ 352 0146 22000000 		.4byte	.LVL5
+ 353 014a F1020000 		.4byte	0x2f1
+ 354 014e 0B       		.uleb128 0xb
+ 355 014f 2A000000 		.4byte	.LVL6
+ 356 0153 F1020000 		.4byte	0x2f1
+ 357 0157 0B       		.uleb128 0xb
+ 358 0158 32000000 		.4byte	.LVL7
+ 359 015c FD020000 		.4byte	0x2fd
+ 360 0160 0B       		.uleb128 0xb
+ 361 0161 44000000 		.4byte	.LVL9
+ 362 0165 D9020000 		.4byte	0x2d9
+ 363 0169 0B       		.uleb128 0xb
+ 364 016a 48000000 		.4byte	.LVL10
+ 365 016e 09030000 		.4byte	0x309
+ 366 0172 00       		.byte	0
+ 367 0173 02       		.uleb128 0x2
+ 368 0174 01       		.byte	0x1
+ 369 0175 02       		.byte	0x2
+ 370 0176 42020000 		.4byte	.LASF21
+ 371 017a 0E       		.uleb128 0xe
+ 372 017b A4000000 		.4byte	0xa4
+ 373 017f 8A010000 		.4byte	0x18a
+ 374 0183 0F       		.uleb128 0xf
+ 375 0184 88000000 		.4byte	0x88
+ 376 0188 01       		.byte	0x1
+ 377 0189 00       		.byte	0
+ 378 018a 10       		.uleb128 0x10
+ 379 018b 48010000 		.4byte	.LASF32
+ 380 018f 01       		.byte	0x1
+ 381 0190 1E       		.byte	0x1e
+ 382 0191 00000000 		.4byte	.LFB36
+ 383 0195 64000000 		.4byte	.LFE36-.LFB36
+ 384 0199 01       		.uleb128 0x1
+ 385 019a 9C       		.byte	0x9c
+ 386 019b CE020000 		.4byte	0x2ce
+ 387 019f 0C       		.uleb128 0xc
+ 388 01a0 0A000000 		.4byte	.LVL12
+ 389 01a4 BC000000 		.4byte	0xbc
+ 390 01a8 B9010000 		.4byte	0x1b9
+ 391 01ac 0D       		.uleb128 0xd
+ 392 01ad 01       		.uleb128 0x1
+ 393 01ae 50       		.byte	0x50
+ 394 01af 02       		.uleb128 0x2
+ 395 01b0 08       		.byte	0x8
+ 396 01b1 20       		.byte	0x20
+ 397 01b2 0D       		.uleb128 0xd
+ 398 01b3 01       		.uleb128 0x1
+ 399 01b4 51       		.byte	0x51
+ 400 01b5 02       		.uleb128 0x2
+ 401 01b6 08       		.byte	0x8
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 10
+
+
+ 402 01b7 7F       		.byte	0x7f
+ 403 01b8 00       		.byte	0
+ 404 01b9 0C       		.uleb128 0xc
+ 405 01ba 12000000 		.4byte	.LVL13
+ 406 01be BC000000 		.4byte	0xbc
+ 407 01c2 D2010000 		.4byte	0x1d2
+ 408 01c6 0D       		.uleb128 0xd
+ 409 01c7 01       		.uleb128 0x1
+ 410 01c8 50       		.byte	0x50
+ 411 01c9 02       		.uleb128 0x2
+ 412 01ca 08       		.byte	0x8
+ 413 01cb 21       		.byte	0x21
+ 414 01cc 0D       		.uleb128 0xd
+ 415 01cd 01       		.uleb128 0x1
+ 416 01ce 51       		.byte	0x51
+ 417 01cf 01       		.uleb128 0x1
+ 418 01d0 34       		.byte	0x34
+ 419 01d1 00       		.byte	0
+ 420 01d2 0C       		.uleb128 0xc
+ 421 01d3 1A000000 		.4byte	.LVL14
+ 422 01d7 BC000000 		.4byte	0xbc
+ 423 01db EC010000 		.4byte	0x1ec
+ 424 01df 0D       		.uleb128 0xd
+ 425 01e0 01       		.uleb128 0x1
+ 426 01e1 50       		.byte	0x50
+ 427 01e2 02       		.uleb128 0x2
+ 428 01e3 08       		.byte	0x8
+ 429 01e4 22       		.byte	0x22
+ 430 01e5 0D       		.uleb128 0xd
+ 431 01e6 01       		.uleb128 0x1
+ 432 01e7 51       		.byte	0x51
+ 433 01e8 02       		.uleb128 0x2
+ 434 01e9 09       		.byte	0x9
+ 435 01ea 80       		.byte	0x80
+ 436 01eb 00       		.byte	0
+ 437 01ec 0C       		.uleb128 0xc
+ 438 01ed 22000000 		.4byte	.LVL15
+ 439 01f1 BC000000 		.4byte	0xbc
+ 440 01f5 05020000 		.4byte	0x205
+ 441 01f9 0D       		.uleb128 0xd
+ 442 01fa 01       		.uleb128 0x1
+ 443 01fb 50       		.byte	0x50
+ 444 01fc 02       		.uleb128 0x2
+ 445 01fd 08       		.byte	0x8
+ 446 01fe 23       		.byte	0x23
+ 447 01ff 0D       		.uleb128 0xd
+ 448 0200 01       		.uleb128 0x1
+ 449 0201 51       		.byte	0x51
+ 450 0202 01       		.uleb128 0x1
+ 451 0203 40       		.byte	0x40
+ 452 0204 00       		.byte	0
+ 453 0205 0C       		.uleb128 0xc
+ 454 0206 2A000000 		.4byte	.LVL16
+ 455 020a BC000000 		.4byte	0xbc
+ 456 020e 1E020000 		.4byte	0x21e
+ 457 0212 0D       		.uleb128 0xd
+ 458 0213 01       		.uleb128 0x1
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 11
+
+
+ 459 0214 50       		.byte	0x50
+ 460 0215 02       		.uleb128 0x2
+ 461 0216 08       		.byte	0x8
+ 462 0217 24       		.byte	0x24
+ 463 0218 0D       		.uleb128 0xd
+ 464 0219 01       		.uleb128 0x1
+ 465 021a 51       		.byte	0x51
+ 466 021b 01       		.uleb128 0x1
+ 467 021c 30       		.byte	0x30
+ 468 021d 00       		.byte	0
+ 469 021e 0C       		.uleb128 0xc
+ 470 021f 32000000 		.4byte	.LVL17
+ 471 0223 BC000000 		.4byte	0xbc
+ 472 0227 37020000 		.4byte	0x237
+ 473 022b 0D       		.uleb128 0xd
+ 474 022c 01       		.uleb128 0x1
+ 475 022d 50       		.byte	0x50
+ 476 022e 02       		.uleb128 0x2
+ 477 022f 08       		.byte	0x8
+ 478 0230 25       		.byte	0x25
+ 479 0231 0D       		.uleb128 0xd
+ 480 0232 01       		.uleb128 0x1
+ 481 0233 51       		.byte	0x51
+ 482 0234 01       		.uleb128 0x1
+ 483 0235 30       		.byte	0x30
+ 484 0236 00       		.byte	0
+ 485 0237 0C       		.uleb128 0xc
+ 486 0238 3A000000 		.4byte	.LVL18
+ 487 023c BC000000 		.4byte	0xbc
+ 488 0240 50020000 		.4byte	0x250
+ 489 0244 0D       		.uleb128 0xd
+ 490 0245 01       		.uleb128 0x1
+ 491 0246 50       		.byte	0x50
+ 492 0247 02       		.uleb128 0x2
+ 493 0248 08       		.byte	0x8
+ 494 0249 26       		.byte	0x26
+ 495 024a 0D       		.uleb128 0xd
+ 496 024b 01       		.uleb128 0x1
+ 497 024c 51       		.byte	0x51
+ 498 024d 01       		.uleb128 0x1
+ 499 024e 30       		.byte	0x30
+ 500 024f 00       		.byte	0
+ 501 0250 0C       		.uleb128 0xc
+ 502 0251 42000000 		.4byte	.LVL19
+ 503 0255 BC000000 		.4byte	0xbc
+ 504 0259 6A020000 		.4byte	0x26a
+ 505 025d 0D       		.uleb128 0xd
+ 506 025e 01       		.uleb128 0x1
+ 507 025f 50       		.byte	0x50
+ 508 0260 02       		.uleb128 0x2
+ 509 0261 08       		.byte	0x8
+ 510 0262 38       		.byte	0x38
+ 511 0263 0D       		.uleb128 0xd
+ 512 0264 01       		.uleb128 0x1
+ 513 0265 51       		.byte	0x51
+ 514 0266 02       		.uleb128 0x2
+ 515 0267 08       		.byte	0x8
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 12
+
+
+ 516 0268 2A       		.byte	0x2a
+ 517 0269 00       		.byte	0
+ 518 026a 0C       		.uleb128 0xc
+ 519 026b 4A000000 		.4byte	.LVL20
+ 520 026f BC000000 		.4byte	0xbc
+ 521 0273 84020000 		.4byte	0x284
+ 522 0277 0D       		.uleb128 0xd
+ 523 0278 01       		.uleb128 0x1
+ 524 0279 50       		.byte	0x50
+ 525 027a 02       		.uleb128 0x2
+ 526 027b 08       		.byte	0x8
+ 527 027c 3A       		.byte	0x3a
+ 528 027d 0D       		.uleb128 0xd
+ 529 027e 01       		.uleb128 0x1
+ 530 027f 51       		.byte	0x51
+ 531 0280 02       		.uleb128 0x2
+ 532 0281 08       		.byte	0x8
+ 533 0282 20       		.byte	0x20
+ 534 0283 00       		.byte	0
+ 535 0284 0C       		.uleb128 0xc
+ 536 0285 52000000 		.4byte	.LVL21
+ 537 0289 BC000000 		.4byte	0xbc
+ 538 028d 9E020000 		.4byte	0x29e
+ 539 0291 0D       		.uleb128 0xd
+ 540 0292 01       		.uleb128 0x1
+ 541 0293 50       		.byte	0x50
+ 542 0294 02       		.uleb128 0x2
+ 543 0295 08       		.byte	0x8
+ 544 0296 3B       		.byte	0x3b
+ 545 0297 0D       		.uleb128 0xd
+ 546 0298 01       		.uleb128 0x1
+ 547 0299 51       		.byte	0x51
+ 548 029a 02       		.uleb128 0x2
+ 549 029b 08       		.byte	0x8
+ 550 029c 33       		.byte	0x33
+ 551 029d 00       		.byte	0
+ 552 029e 0C       		.uleb128 0xc
+ 553 029f 5A000000 		.4byte	.LVL22
+ 554 02a3 BC000000 		.4byte	0xbc
+ 555 02a7 B7020000 		.4byte	0x2b7
+ 556 02ab 0D       		.uleb128 0xd
+ 557 02ac 01       		.uleb128 0x1
+ 558 02ad 50       		.byte	0x50
+ 559 02ae 02       		.uleb128 0x2
+ 560 02af 08       		.byte	0x8
+ 561 02b0 3C       		.byte	0x3c
+ 562 02b1 0D       		.uleb128 0xd
+ 563 02b2 01       		.uleb128 0x1
+ 564 02b3 51       		.byte	0x51
+ 565 02b4 01       		.uleb128 0x1
+ 566 02b5 45       		.byte	0x45
+ 567 02b6 00       		.byte	0
+ 568 02b7 11       		.uleb128 0x11
+ 569 02b8 62000000 		.4byte	.LVL23
+ 570 02bc BC000000 		.4byte	0xbc
+ 571 02c0 0D       		.uleb128 0xd
+ 572 02c1 01       		.uleb128 0x1
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 13
+
+
+ 573 02c2 50       		.byte	0x50
+ 574 02c3 02       		.uleb128 0x2
+ 575 02c4 08       		.byte	0x8
+ 576 02c5 3D       		.byte	0x3d
+ 577 02c6 0D       		.uleb128 0xd
+ 578 02c7 01       		.uleb128 0x1
+ 579 02c8 51       		.byte	0x51
+ 580 02c9 02       		.uleb128 0x2
+ 581 02ca 08       		.byte	0x8
+ 582 02cb 42       		.byte	0x42
+ 583 02cc 00       		.byte	0
+ 584 02cd 00       		.byte	0
+ 585 02ce 12       		.uleb128 0x12
+ 586 02cf 31000000 		.4byte	.LASF22
+ 587 02d3 31000000 		.4byte	.LASF22
+ 588 02d7 05       		.byte	0x5
+ 589 02d8 72       		.byte	0x72
+ 590 02d9 13       		.uleb128 0x13
+ 591 02da 48020000 		.4byte	.LASF23
+ 592 02de 48020000 		.4byte	.LASF23
+ 593 02e2 06       		.byte	0x6
+ 594 02e3 1001     		.2byte	0x110
+ 595 02e5 13       		.uleb128 0x13
+ 596 02e6 8C000000 		.4byte	.LASF24
+ 597 02ea 8C000000 		.4byte	.LASF24
+ 598 02ee 06       		.byte	0x6
+ 599 02ef 1301     		.2byte	0x113
+ 600 02f1 13       		.uleb128 0x13
+ 601 02f2 3B000000 		.4byte	.LASF25
+ 602 02f6 3B000000 		.4byte	.LASF25
+ 603 02fa 06       		.byte	0x6
+ 604 02fb 0F01     		.2byte	0x10f
+ 605 02fd 13       		.uleb128 0x13
+ 606 02fe 19020000 		.4byte	.LASF26
+ 607 0302 19020000 		.4byte	.LASF26
+ 608 0306 06       		.byte	0x6
+ 609 0307 1601     		.2byte	0x116
+ 610 0309 12       		.uleb128 0x12
+ 611 030a F1010000 		.4byte	.LASF27
+ 612 030e F1010000 		.4byte	.LASF27
+ 613 0312 05       		.byte	0x5
+ 614 0313 73       		.byte	0x73
+ 615 0314 00       		.byte	0
+ 616              		.section	.debug_abbrev,"",%progbits
+ 617              	.Ldebug_abbrev0:
+ 618 0000 01       		.uleb128 0x1
+ 619 0001 11       		.uleb128 0x11
+ 620 0002 01       		.byte	0x1
+ 621 0003 25       		.uleb128 0x25
+ 622 0004 0E       		.uleb128 0xe
+ 623 0005 13       		.uleb128 0x13
+ 624 0006 0B       		.uleb128 0xb
+ 625 0007 03       		.uleb128 0x3
+ 626 0008 0E       		.uleb128 0xe
+ 627 0009 1B       		.uleb128 0x1b
+ 628 000a 0E       		.uleb128 0xe
+ 629 000b 55       		.uleb128 0x55
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 14
+
+
+ 630 000c 17       		.uleb128 0x17
+ 631 000d 11       		.uleb128 0x11
+ 632 000e 01       		.uleb128 0x1
+ 633 000f 10       		.uleb128 0x10
+ 634 0010 17       		.uleb128 0x17
+ 635 0011 00       		.byte	0
+ 636 0012 00       		.byte	0
+ 637 0013 02       		.uleb128 0x2
+ 638 0014 24       		.uleb128 0x24
+ 639 0015 00       		.byte	0
+ 640 0016 0B       		.uleb128 0xb
+ 641 0017 0B       		.uleb128 0xb
+ 642 0018 3E       		.uleb128 0x3e
+ 643 0019 0B       		.uleb128 0xb
+ 644 001a 03       		.uleb128 0x3
+ 645 001b 0E       		.uleb128 0xe
+ 646 001c 00       		.byte	0
+ 647 001d 00       		.byte	0
+ 648 001e 03       		.uleb128 0x3
+ 649 001f 16       		.uleb128 0x16
+ 650 0020 00       		.byte	0
+ 651 0021 03       		.uleb128 0x3
+ 652 0022 0E       		.uleb128 0xe
+ 653 0023 3A       		.uleb128 0x3a
+ 654 0024 0B       		.uleb128 0xb
+ 655 0025 3B       		.uleb128 0x3b
+ 656 0026 0B       		.uleb128 0xb
+ 657 0027 49       		.uleb128 0x49
+ 658 0028 13       		.uleb128 0x13
+ 659 0029 00       		.byte	0
+ 660 002a 00       		.byte	0
+ 661 002b 04       		.uleb128 0x4
+ 662 002c 24       		.uleb128 0x24
+ 663 002d 00       		.byte	0
+ 664 002e 0B       		.uleb128 0xb
+ 665 002f 0B       		.uleb128 0xb
+ 666 0030 3E       		.uleb128 0x3e
+ 667 0031 0B       		.uleb128 0xb
+ 668 0032 03       		.uleb128 0x3
+ 669 0033 08       		.uleb128 0x8
+ 670 0034 00       		.byte	0
+ 671 0035 00       		.byte	0
+ 672 0036 05       		.uleb128 0x5
+ 673 0037 16       		.uleb128 0x16
+ 674 0038 00       		.byte	0
+ 675 0039 03       		.uleb128 0x3
+ 676 003a 0E       		.uleb128 0xe
+ 677 003b 3A       		.uleb128 0x3a
+ 678 003c 0B       		.uleb128 0xb
+ 679 003d 3B       		.uleb128 0x3b
+ 680 003e 05       		.uleb128 0x5
+ 681 003f 49       		.uleb128 0x49
+ 682 0040 13       		.uleb128 0x13
+ 683 0041 00       		.byte	0
+ 684 0042 00       		.byte	0
+ 685 0043 06       		.uleb128 0x6
+ 686 0044 2E       		.uleb128 0x2e
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 15
+
+
+ 687 0045 01       		.byte	0x1
+ 688 0046 03       		.uleb128 0x3
+ 689 0047 0E       		.uleb128 0xe
+ 690 0048 3A       		.uleb128 0x3a
+ 691 0049 0B       		.uleb128 0xb
+ 692 004a 3B       		.uleb128 0x3b
+ 693 004b 0B       		.uleb128 0xb
+ 694 004c 27       		.uleb128 0x27
+ 695 004d 19       		.uleb128 0x19
+ 696 004e 49       		.uleb128 0x49
+ 697 004f 13       		.uleb128 0x13
+ 698 0050 11       		.uleb128 0x11
+ 699 0051 01       		.uleb128 0x1
+ 700 0052 12       		.uleb128 0x12
+ 701 0053 06       		.uleb128 0x6
+ 702 0054 40       		.uleb128 0x40
+ 703 0055 18       		.uleb128 0x18
+ 704 0056 9742     		.uleb128 0x2117
+ 705 0058 19       		.uleb128 0x19
+ 706 0059 01       		.uleb128 0x1
+ 707 005a 13       		.uleb128 0x13
+ 708 005b 00       		.byte	0
+ 709 005c 00       		.byte	0
+ 710 005d 07       		.uleb128 0x7
+ 711 005e 05       		.uleb128 0x5
+ 712 005f 00       		.byte	0
+ 713 0060 03       		.uleb128 0x3
+ 714 0061 08       		.uleb128 0x8
+ 715 0062 3A       		.uleb128 0x3a
+ 716 0063 0B       		.uleb128 0xb
+ 717 0064 3B       		.uleb128 0x3b
+ 718 0065 0B       		.uleb128 0xb
+ 719 0066 49       		.uleb128 0x49
+ 720 0067 13       		.uleb128 0x13
+ 721 0068 02       		.uleb128 0x2
+ 722 0069 17       		.uleb128 0x17
+ 723 006a 00       		.byte	0
+ 724 006b 00       		.byte	0
+ 725 006c 08       		.uleb128 0x8
+ 726 006d 05       		.uleb128 0x5
+ 727 006e 00       		.byte	0
+ 728 006f 03       		.uleb128 0x3
+ 729 0070 0E       		.uleb128 0xe
+ 730 0071 3A       		.uleb128 0x3a
+ 731 0072 0B       		.uleb128 0xb
+ 732 0073 3B       		.uleb128 0x3b
+ 733 0074 0B       		.uleb128 0xb
+ 734 0075 49       		.uleb128 0x49
+ 735 0076 13       		.uleb128 0x13
+ 736 0077 02       		.uleb128 0x2
+ 737 0078 17       		.uleb128 0x17
+ 738 0079 00       		.byte	0
+ 739 007a 00       		.byte	0
+ 740 007b 09       		.uleb128 0x9
+ 741 007c 34       		.uleb128 0x34
+ 742 007d 00       		.byte	0
+ 743 007e 03       		.uleb128 0x3
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 16
+
+
+ 744 007f 0E       		.uleb128 0xe
+ 745 0080 3A       		.uleb128 0x3a
+ 746 0081 0B       		.uleb128 0xb
+ 747 0082 3B       		.uleb128 0x3b
+ 748 0083 0B       		.uleb128 0xb
+ 749 0084 49       		.uleb128 0x49
+ 750 0085 13       		.uleb128 0x13
+ 751 0086 02       		.uleb128 0x2
+ 752 0087 17       		.uleb128 0x17
+ 753 0088 00       		.byte	0
+ 754 0089 00       		.byte	0
+ 755 008a 0A       		.uleb128 0xa
+ 756 008b 34       		.uleb128 0x34
+ 757 008c 00       		.byte	0
+ 758 008d 03       		.uleb128 0x3
+ 759 008e 0E       		.uleb128 0xe
+ 760 008f 3A       		.uleb128 0x3a
+ 761 0090 0B       		.uleb128 0xb
+ 762 0091 3B       		.uleb128 0x3b
+ 763 0092 0B       		.uleb128 0xb
+ 764 0093 49       		.uleb128 0x49
+ 765 0094 13       		.uleb128 0x13
+ 766 0095 02       		.uleb128 0x2
+ 767 0096 18       		.uleb128 0x18
+ 768 0097 00       		.byte	0
+ 769 0098 00       		.byte	0
+ 770 0099 0B       		.uleb128 0xb
+ 771 009a 898201   		.uleb128 0x4109
+ 772 009d 00       		.byte	0
+ 773 009e 11       		.uleb128 0x11
+ 774 009f 01       		.uleb128 0x1
+ 775 00a0 31       		.uleb128 0x31
+ 776 00a1 13       		.uleb128 0x13
+ 777 00a2 00       		.byte	0
+ 778 00a3 00       		.byte	0
+ 779 00a4 0C       		.uleb128 0xc
+ 780 00a5 898201   		.uleb128 0x4109
+ 781 00a8 01       		.byte	0x1
+ 782 00a9 11       		.uleb128 0x11
+ 783 00aa 01       		.uleb128 0x1
+ 784 00ab 31       		.uleb128 0x31
+ 785 00ac 13       		.uleb128 0x13
+ 786 00ad 01       		.uleb128 0x1
+ 787 00ae 13       		.uleb128 0x13
+ 788 00af 00       		.byte	0
+ 789 00b0 00       		.byte	0
+ 790 00b1 0D       		.uleb128 0xd
+ 791 00b2 8A8201   		.uleb128 0x410a
+ 792 00b5 00       		.byte	0
+ 793 00b6 02       		.uleb128 0x2
+ 794 00b7 18       		.uleb128 0x18
+ 795 00b8 9142     		.uleb128 0x2111
+ 796 00ba 18       		.uleb128 0x18
+ 797 00bb 00       		.byte	0
+ 798 00bc 00       		.byte	0
+ 799 00bd 0E       		.uleb128 0xe
+ 800 00be 01       		.uleb128 0x1
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 17
+
+
+ 801 00bf 01       		.byte	0x1
+ 802 00c0 49       		.uleb128 0x49
+ 803 00c1 13       		.uleb128 0x13
+ 804 00c2 01       		.uleb128 0x1
+ 805 00c3 13       		.uleb128 0x13
+ 806 00c4 00       		.byte	0
+ 807 00c5 00       		.byte	0
+ 808 00c6 0F       		.uleb128 0xf
+ 809 00c7 21       		.uleb128 0x21
+ 810 00c8 00       		.byte	0
+ 811 00c9 49       		.uleb128 0x49
+ 812 00ca 13       		.uleb128 0x13
+ 813 00cb 2F       		.uleb128 0x2f
+ 814 00cc 0B       		.uleb128 0xb
+ 815 00cd 00       		.byte	0
+ 816 00ce 00       		.byte	0
+ 817 00cf 10       		.uleb128 0x10
+ 818 00d0 2E       		.uleb128 0x2e
+ 819 00d1 01       		.byte	0x1
+ 820 00d2 3F       		.uleb128 0x3f
+ 821 00d3 19       		.uleb128 0x19
+ 822 00d4 03       		.uleb128 0x3
+ 823 00d5 0E       		.uleb128 0xe
+ 824 00d6 3A       		.uleb128 0x3a
+ 825 00d7 0B       		.uleb128 0xb
+ 826 00d8 3B       		.uleb128 0x3b
+ 827 00d9 0B       		.uleb128 0xb
+ 828 00da 27       		.uleb128 0x27
+ 829 00db 19       		.uleb128 0x19
+ 830 00dc 11       		.uleb128 0x11
+ 831 00dd 01       		.uleb128 0x1
+ 832 00de 12       		.uleb128 0x12
+ 833 00df 06       		.uleb128 0x6
+ 834 00e0 40       		.uleb128 0x40
+ 835 00e1 18       		.uleb128 0x18
+ 836 00e2 9742     		.uleb128 0x2117
+ 837 00e4 19       		.uleb128 0x19
+ 838 00e5 01       		.uleb128 0x1
+ 839 00e6 13       		.uleb128 0x13
+ 840 00e7 00       		.byte	0
+ 841 00e8 00       		.byte	0
+ 842 00e9 11       		.uleb128 0x11
+ 843 00ea 898201   		.uleb128 0x4109
+ 844 00ed 01       		.byte	0x1
+ 845 00ee 11       		.uleb128 0x11
+ 846 00ef 01       		.uleb128 0x1
+ 847 00f0 31       		.uleb128 0x31
+ 848 00f1 13       		.uleb128 0x13
+ 849 00f2 00       		.byte	0
+ 850 00f3 00       		.byte	0
+ 851 00f4 12       		.uleb128 0x12
+ 852 00f5 2E       		.uleb128 0x2e
+ 853 00f6 00       		.byte	0
+ 854 00f7 3F       		.uleb128 0x3f
+ 855 00f8 19       		.uleb128 0x19
+ 856 00f9 3C       		.uleb128 0x3c
+ 857 00fa 19       		.uleb128 0x19
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 18
+
+
+ 858 00fb 6E       		.uleb128 0x6e
+ 859 00fc 0E       		.uleb128 0xe
+ 860 00fd 03       		.uleb128 0x3
+ 861 00fe 0E       		.uleb128 0xe
+ 862 00ff 3A       		.uleb128 0x3a
+ 863 0100 0B       		.uleb128 0xb
+ 864 0101 3B       		.uleb128 0x3b
+ 865 0102 0B       		.uleb128 0xb
+ 866 0103 00       		.byte	0
+ 867 0104 00       		.byte	0
+ 868 0105 13       		.uleb128 0x13
+ 869 0106 2E       		.uleb128 0x2e
+ 870 0107 00       		.byte	0
+ 871 0108 3F       		.uleb128 0x3f
+ 872 0109 19       		.uleb128 0x19
+ 873 010a 3C       		.uleb128 0x3c
+ 874 010b 19       		.uleb128 0x19
+ 875 010c 6E       		.uleb128 0x6e
+ 876 010d 0E       		.uleb128 0xe
+ 877 010e 03       		.uleb128 0x3
+ 878 010f 0E       		.uleb128 0xe
+ 879 0110 3A       		.uleb128 0x3a
+ 880 0111 0B       		.uleb128 0xb
+ 881 0112 3B       		.uleb128 0x3b
+ 882 0113 05       		.uleb128 0x5
+ 883 0114 00       		.byte	0
+ 884 0115 00       		.byte	0
+ 885 0116 00       		.byte	0
+ 886              		.section	.debug_loc,"",%progbits
+ 887              	.Ldebug_loc0:
+ 888              	.LLST0:
+ 889 0000 00000000 		.4byte	.LVL0
+ 890 0004 0D000000 		.4byte	.LVL2-1
+ 891 0008 0100     		.2byte	0x1
+ 892 000a 50       		.byte	0x50
+ 893 000b 0D000000 		.4byte	.LVL2-1
+ 894 000f 4E000000 		.4byte	.LFE38
+ 895 0013 0400     		.2byte	0x4
+ 896 0015 F3       		.byte	0xf3
+ 897 0016 01       		.uleb128 0x1
+ 898 0017 50       		.byte	0x50
+ 899 0018 9F       		.byte	0x9f
+ 900 0019 00000000 		.4byte	0
+ 901 001d 00000000 		.4byte	0
+ 902              	.LLST1:
+ 903 0021 00000000 		.4byte	.LVL0
+ 904 0025 0D000000 		.4byte	.LVL2-1
+ 905 0029 0100     		.2byte	0x1
+ 906 002b 51       		.byte	0x51
+ 907 002c 0D000000 		.4byte	.LVL2-1
+ 908 0030 4E000000 		.4byte	.LFE38
+ 909 0034 0400     		.2byte	0x4
+ 910 0036 F3       		.byte	0xf3
+ 911 0037 01       		.uleb128 0x1
+ 912 0038 51       		.byte	0x51
+ 913 0039 9F       		.byte	0x9f
+ 914 003a 00000000 		.4byte	0
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 19
+
+
+ 915 003e 00000000 		.4byte	0
+ 916              	.LLST2:
+ 917 0042 04000000 		.4byte	.LVL1
+ 918 0046 40000000 		.4byte	.LVL8
+ 919 004a 0200     		.2byte	0x2
+ 920 004c 30       		.byte	0x30
+ 921 004d 9F       		.byte	0x9f
+ 922 004e 40000000 		.4byte	.LVL8
+ 923 0052 4C000000 		.4byte	.LVL11
+ 924 0056 0100     		.2byte	0x1
+ 925 0058 54       		.byte	0x54
+ 926 0059 00000000 		.4byte	0
+ 927 005d 00000000 		.4byte	0
+ 928              		.section	.debug_aranges,"",%progbits
+ 929 0000 24000000 		.4byte	0x24
+ 930 0004 0200     		.2byte	0x2
+ 931 0006 00000000 		.4byte	.Ldebug_info0
+ 932 000a 04       		.byte	0x4
+ 933 000b 00       		.byte	0
+ 934 000c 0000     		.2byte	0
+ 935 000e 0000     		.2byte	0
+ 936 0010 00000000 		.4byte	.LFB38
+ 937 0014 4E000000 		.4byte	.LFE38-.LFB38
+ 938 0018 00000000 		.4byte	.LFB36
+ 939 001c 64000000 		.4byte	.LFE36-.LFB36
+ 940 0020 00000000 		.4byte	0
+ 941 0024 00000000 		.4byte	0
+ 942              		.section	.debug_ranges,"",%progbits
+ 943              	.Ldebug_ranges0:
+ 944 0000 00000000 		.4byte	.LFB38
+ 945 0004 4E000000 		.4byte	.LFE38
+ 946 0008 00000000 		.4byte	.LFB36
+ 947 000c 64000000 		.4byte	.LFE36
+ 948 0010 00000000 		.4byte	0
+ 949 0014 00000000 		.4byte	0
+ 950              		.section	.debug_line,"",%progbits
+ 951              	.Ldebug_line0:
+ 952 0000 A5010000 		.section	.debug_str,"MS",%progbits,1
+ 952      02005D01 
+ 952      00000201 
+ 952      FB0E0D00 
+ 952      01010101 
+ 953              	.LASF6:
+ 954 0000 6C6F6E67 		.ascii	"long long int\000"
+ 954      206C6F6E 
+ 954      6720696E 
+ 954      7400
+ 955              	.LASF9:
+ 956 000e 5F5F7569 		.ascii	"__uint8_t\000"
+ 956      6E74385F 
+ 956      7400
+ 957              	.LASF18:
+ 958 0018 76616C75 		.ascii	"value\000"
+ 958      6500
+ 959              	.LASF3:
+ 960 001e 73686F72 		.ascii	"short unsigned int\000"
+ 960      7420756E 
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 20
+
+
+ 960      7369676E 
+ 960      65642069 
+ 960      6E7400
+ 961              	.LASF22:
+ 962 0031 4932435F 		.ascii	"I2C_Start\000"
+ 962      53746172 
+ 962      7400
+ 963              	.LASF25:
+ 964 003b 4932435F 		.ascii	"I2C_I2CMasterStatus\000"
+ 964      4932434D 
+ 964      61737465 
+ 964      72537461 
+ 964      74757300 
+ 965              	.LASF15:
+ 966 004f 666C6F61 		.ascii	"float\000"
+ 966      7400
+ 967              	.LASF7:
+ 968 0055 6C6F6E67 		.ascii	"long long unsigned int\000"
+ 968      206C6F6E 
+ 968      6720756E 
+ 968      7369676E 
+ 968      65642069 
+ 969              	.LASF1:
+ 970 006c 756E7369 		.ascii	"unsigned char\000"
+ 970      676E6564 
+ 970      20636861 
+ 970      7200
+ 971              	.LASF5:
+ 972 007a 6C6F6E67 		.ascii	"long unsigned int\000"
+ 972      20756E73 
+ 972      69676E65 
+ 972      6420696E 
+ 972      7400
+ 973              	.LASF24:
+ 974 008c 4932435F 		.ascii	"I2C_I2CMasterWriteBuf\000"
+ 974      4932434D 
+ 974      61737465 
+ 974      72577269 
+ 974      74654275 
+ 975              	.LASF16:
+ 976 00a2 75696E74 		.ascii	"uint8\000"
+ 976      3800
+ 977              	.LASF19:
+ 978 00a8 73756363 		.ascii	"success\000"
+ 978      65737300 
+ 979              	.LASF14:
+ 980 00b0 646F7562 		.ascii	"double\000"
+ 980      6C6500
+ 981              	.LASF30:
+ 982 00b7 433A5C55 		.ascii	"C:\\Users\\pietr\\Desktop\\psoc-sandbox\\barbud_tes"
+ 982      73657273 
+ 982      5C706965 
+ 982      74725C44 
+ 982      65736B74 
+ 983 00e5 745C626C 		.ascii	"t\\bletest1.cydsn\000"
+ 983      65746573 
+ 983      74312E63 
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 21
+
+
+ 983      7964736E 
+ 983      00
+ 984              	.LASF20:
+ 985 00f6 77726275 		.ascii	"wrbuf\000"
+ 985      6600
+ 986              	.LASF17:
+ 987 00fc 75696E74 		.ascii	"uint16\000"
+ 987      313600
+ 988              	.LASF8:
+ 989 0103 756E7369 		.ascii	"unsigned int\000"
+ 989      676E6564 
+ 989      20696E74 
+ 989      00
+ 990              	.LASF13:
+ 991 0110 63686172 		.ascii	"char\000"
+ 991      00
+ 992              	.LASF10:
+ 993 0115 75696E74 		.ascii	"uint8_t\000"
+ 993      385F7400 
+ 994              	.LASF29:
+ 995 011d 61636365 		.ascii	"accelerometer.c\000"
+ 995      6C65726F 
+ 995      6D657465 
+ 995      722E6300 
+ 996              	.LASF31:
+ 997 012d 61636365 		.ascii	"accelerometerWriteRegister\000"
+ 997      6C65726F 
+ 997      6D657465 
+ 997      72577269 
+ 997      74655265 
+ 998              	.LASF32:
+ 999 0148 61636365 		.ascii	"accelerometerInit\000"
+ 999      6C65726F 
+ 999      6D657465 
+ 999      72496E69 
+ 999      7400
+ 1000              	.LASF28:
+ 1001 015a 474E5520 		.ascii	"GNU C11 5.4.1 20160609 (release) [ARM/embedded-5-br"
+ 1001      43313120 
+ 1001      352E342E 
+ 1001      31203230 
+ 1001      31363036 
+ 1002 018d 616E6368 		.ascii	"anch revision 237715] -mcpu=cortex-m0 -mthumb -g -O"
+ 1002      20726576 
+ 1002      6973696F 
+ 1002      6E203233 
+ 1002      37373135 
+ 1003 01c0 67202D66 		.ascii	"g -ffunction-sections -ffat-lto-objects\000"
+ 1003      66756E63 
+ 1003      74696F6E 
+ 1003      2D736563 
+ 1003      74696F6E 
+ 1004              	.LASF12:
+ 1005 01e8 73697A65 		.ascii	"sizetype\000"
+ 1005      74797065 
+ 1005      00
+ 1006              	.LASF27:
+ARM GAS  C:\Users\pietr\AppData\Local\Temp\ccy81PFe.s 			page 22
+
+
+ 1007 01f1 4932435F 		.ascii	"I2C_Stop\000"
+ 1007      53746F70 
+ 1007      00
+ 1008              	.LASF2:
+ 1009 01fa 73686F72 		.ascii	"short int\000"
+ 1009      7420696E 
+ 1009      7400
+ 1010              	.LASF4:
+ 1011 0204 6C6F6E67 		.ascii	"long int\000"
+ 1011      20696E74 
+ 1011      00
+ 1012              	.LASF11:
+ 1013 020d 6C6F6E67 		.ascii	"long double\000"
+ 1013      20646F75 
+ 1013      626C6500 
+ 1014              	.LASF26:
+ 1015 0219 4932435F 		.ascii	"I2C_I2CMasterGetWriteBufSize\000"
+ 1015      4932434D 
+ 1015      61737465 
+ 1015      72476574 
+ 1015      57726974 
+ 1016              	.LASF0:
+ 1017 0236 7369676E 		.ascii	"signed char\000"
+ 1017      65642063 
+ 1017      68617200 
+ 1018              	.LASF21:
+ 1019 0242 5F426F6F 		.ascii	"_Bool\000"
+ 1019      6C00
+ 1020              	.LASF23:
+ 1021 0248 4932435F 		.ascii	"I2C_I2CMasterClearStatus\000"
+ 1021      4932434D 
+ 1021      61737465 
+ 1021      72436C65 
+ 1021      61725374 
+ 1022              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 5.4.1 20160609 (release) [ARM/embedded-5-bran

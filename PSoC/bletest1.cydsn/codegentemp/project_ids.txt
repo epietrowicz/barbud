@@ -1,0 +1,6 @@
+C:\Users\pietr\Desktop\psoc-sandbox\barbud_test\bletest1.cydsn\bletest1.cyprj|b4b56f1f-dd37-4778-a9e1-38abbe7ecf5f
+C:\Program Files (x86)\Cypress\PSoC Creator\4.2\PSoC Creator\psoc\content\default\CyAnnotationLibrary\CyAnnotationLibrary.cylib\CyAnnotationLibrary.cyprj|1e7af976-1d24-4a47-bf8b-df9eb9495c7c
+C:\Users\pietr\Documents\PSoC Creator\4.2\Downloads ( 4.2).cylib\Downloads ( 4.2).cyprj|556df2f2-30d0-45cb-98ff-efdc2fd15381
+C:\Program Files (x86)\Cypress\PSoC Creator\4.2\PSoC Creator\psoc\content\cycomponentlibraryupdates\CyComponentLibraryUpdates.cylib\CyComponentLibraryUpdates.cyprj|10f679db-6730-471b-82a0-834c56f940f4
+C:\Program Files (x86)\Cypress\PSoC Creator\4.2\PSoC Creator\psoc\content\cycomponentlibrary\CyComponentLibrary.cylib\CyComponentLibrary.cyprj|34a1fa14-f945-4a38-b73d-baba8c762975
+C:\Program Files (x86)\Cypress\PSoC Creator\4.2\PSoC Creator\psoc\content\cyprimitives\CyPrimitives.cylib\CyPrimitives.cyprj|4d7db3c1-e978-4860-a7a0-0ab32a5b7a3b
